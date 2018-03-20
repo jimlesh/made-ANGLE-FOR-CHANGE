@@ -1,0 +1,111 @@
+#include <ESP8266WiFi.h>
+#include <SoftwareSerial.h>
+
+#include <SoftwareSerial.h>
+#include <TinyGPS.h>
+long lat,lon; 
+TinyGPS gps;
+#define SENSOR D0
+SoftwareSerial GPS(2,3);
+
+const char* ssid     = "InFocus Vision 3"; //WiFiSSID
+const char* password = "jimlesh24";  //PASSWORD
+
+const char* host = "api.thingspeak.com";
+// Data URL: https://thingspeak.com/channels/XXXXX/
+const char* privateKey = "21C0IZ59JMGQSIYT"; //ENTER_YOUR_PRIVATE_KEY
+
+void setup() {
+  Serial.begin(9600);
+  delay(10);
+   GPS.begin(115200);
+  
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+ 
+float value = 0;
+
+void loop() {
+  delay(5000);
+  value  = digitalRead(D4);
+
+  Serial.print("connecting to ");
+  Serial.println(host);
+
+  // Use WiFiClient class to create TCP connections
+  WiFiClient client;
+  const int httpPort = 80;
+  if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
+  }
+
+    byte a;
+  if(GPS.available())  
+    {
+ 
+   
+   //Serial.write(a);  uncomment this line to get NMEA data on Serial window
+   while(gps.encode(a))
+   { 
+    gps.get_position(&lat,&lon);
+    Serial.print("Position: ");
+    Serial.print("\n");
+      Serial.print("lat");
+    Serial.print((lat*0.000001),8);
+    Serial.print(",");
+    Serial.print("long");  
+    Serial.println((lon*0.000001),8); 
+    Serial.print("\n"); 
+    
+}
+}
+
+
+
+
+  
+  Serial.println("connection done");
+  // We now create a URI for the request
+  String url = "/update?";
+  url += "key=";
+  url += privateKey;
+  url += "&field1=";
+  url += value;
+  url += "&field2=";
+  url += value;
+
+
+  Serial.print("Requesting URL: ");
+  Serial.println(url);
+
+  // This will send the request to the server
+  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "Connection: close\r\n\r\n");
+  delay(10);
+
+  // Read all the lines of the reply from server and print them to Serial
+  while (client.available()) {
+    String line = client.readStringUntil('\r');
+    Serial.print(line);
+  }
+
+  Serial.println();
+  Serial.println("closing connection");
+}
